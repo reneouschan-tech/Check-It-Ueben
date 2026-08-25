@@ -1,6 +1,6 @@
 {
-  "name": "Check It",
-  "short_name": "Check It",
+  "name": "Check It Üben",
+  "short_name": "Check It Üben",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
