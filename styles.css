@@ -203,11 +203,6 @@ button:disabled {
   margin: 0 auto 18px;
 }
 
-.question-head h2 {
-  font-size: 2rem;
-  line-height: 1.2;
-}
-
 .badge {
   flex: 0 0 auto;
   border-radius: 999px;
@@ -265,7 +260,7 @@ button:disabled {
   padding: 10px;
   text-align: left;
   touch-action: manipulation;
-  font-size: 1.12rem;
+  font-size: 1.22rem;
   line-height: 1.45;
 }
 
@@ -480,7 +475,7 @@ body.standalone .trainer {
 
   .option {
     min-height: 104px;
-    font-size: 1.06rem;
+    font-size: 1.14rem;
   }
 
   .option-content {
@@ -538,7 +533,7 @@ body.standalone .trainer {
     grid-template-columns: 42px 1fr;
     gap: 10px;
     min-height: 96px;
-    font-size: 1.02rem;
+    font-size: 1.08rem;
   }
 
   .option .letter {
@@ -549,7 +544,7 @@ body.standalone .trainer {
 
   .option-content {
     height: 72px;
-    font-size: 1rem;
+    font-size: 1.05rem;
   }
 
   .dialog {
