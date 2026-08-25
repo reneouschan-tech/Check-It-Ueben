@@ -11,6 +11,7 @@ const els = {
   reset: document.querySelector("#resetBtn"),
   importBtn: document.querySelector("#importBtn"),
   import: document.querySelector("#importInput"),
+  installBtn: document.querySelector("#installBtn"),
   mobileNextBtn: document.querySelector("#mobileNextBtn"),
   datasetInfo: document.querySelector("#datasetInfo"),
   meta: document.querySelector("#questionMeta"),
@@ -43,7 +44,9 @@ let current = null;
 let selected = new Set();
 let answered = false;
 let assetVersion = Date.now();
+let deferredInstallPrompt = null;
 let pendingCodeAction = null;
+const answerImageCache = new Map();
 const INITIAL_DATASET_URL = `data/questions.json?ts=${Date.now()}`;
 
 window.addEventListener("error", (event) => {
@@ -79,37 +82,6 @@ function saveProgress() {
 
 function getState(question) {
   return progress[question.id] || { stage: 1, attempts: 0, correct: 0, wrong: 0 };
-}
-
-function isOrderedQuestion(question) {
-  const type = String(question?.type || "").toLowerCase();
-  return type.includes("reihung") || type.includes("textbaustein");
-}
-
-function optionOrderValue(option, index) {
-  const text = String(option?.text || "");
-  const match = text.match(/(\d+)\s*$/);
-  return match ? Number(match[1]) : index + 1;
-}
-
-function selectedLabels() {
-  return Array.isArray(selected) ? [...selected] : [...selected];
-}
-
-function selectedHas(label) {
-  return Array.isArray(selected) ? selected.includes(label) : selected.has(label);
-}
-
-function toggleSelectedLabel(label, ordered) {
-  if (ordered) {
-    const index = selected.indexOf(label);
-    if (index >= 0) selected.splice(index, 1);
-    else selected.push(label);
-    return;
-  }
-
-  if (selected.has(label)) selected.delete(label);
-  else selected.add(label);
 }
 
 function updateStats() {
@@ -155,8 +127,7 @@ function pickQuestion() {
 
 function renderQuestion(question) {
   current = question;
-  const ordered = isOrderedQuestion(question);
-  selected = ordered ? [] : new Set();
+  selected = new Set();
   answered = false;
   const state = getState(question);
   const hasOptions = question.options && question.options.length;
@@ -178,7 +149,7 @@ function renderQuestion(question) {
 
   if (!hasOptions) return;
 
-  const multiple = ordered ? true : !question.type.toLowerCase().includes("single");
+  const multiple = !question.type.toLowerCase().includes("single");
   for (const option of question.options) {
     const button = document.createElement("div");
     button.className = "option";
@@ -186,20 +157,19 @@ function renderQuestion(question) {
     button.tabIndex = 0;
     button.dataset.label = option.label;
     button.innerHTML = `
-      <span class="letter">
-        <span class="letter-label">${option.label}</span>
-        <span class="order" aria-hidden="true"></span>
-      </span>
+      <span class="letter">${option.label}</span>
       <span class="option-content">
-        ${option.image ? `<img src="${withVersion(option.image)}" alt="Antwort ${option.label}" />` : `<span>${option.text}</span>`}
+        ${option.image ? `<img data-answer-image="true" src="${withVersion(option.image)}" alt="Antwort ${option.label}" />` : `<span>${option.text}</span>`}
       </span>
     `;
+    const answerImg = button.querySelector('img[data-answer-image="true"]');
+    if (answerImg) {
+      void setCroppedAnswerImage(answerImg, withVersion(option.image));
+    }
     button.addEventListener("click", () => {
       if (answered) return;
-      if (ordered) {
-        toggleSelectedLabel(option.label, true);
-      } else if (multiple) {
-        toggleSelectedLabel(option.label, false);
+      if (multiple) {
+        selected.has(option.label) ? selected.delete(option.label) : selected.add(option.label);
       } else {
         selected = new Set([option.label]);
       }
@@ -218,35 +188,97 @@ function withVersion(path) {
   return `${path}?v=${assetVersion}`;
 }
 
-function renderSelection() {
-  const ordered = current ? isOrderedQuestion(current) : false;
-  const labels = selectedLabels();
-  for (const button of els.options.querySelectorAll(".option")) {
-    const label = button.dataset.label;
-    const isSelected = selectedHas(label);
-    button.classList.toggle("selected", isSelected);
-    const orderBadge = button.querySelector(".order");
-    if (orderBadge) {
-      const orderIndex = ordered ? labels.indexOf(label) : -1;
-      orderBadge.textContent = orderIndex >= 0 ? String(orderIndex + 1) : "";
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
+}
+
+function findContentBounds(image) {
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth || image.width;
+  canvas.height = image.naturalHeight || image.height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx || !canvas.width || !canvas.height) return null;
+  ctx.drawImage(image, 0, 0);
+  const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const i = (y * width + x) * 4;
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const a = data[i + 3];
+      if (a === 0) continue;
+      if (r < 245 || g < 245 || b < 245) {
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
     }
   }
-  els.submit.disabled = labels.length === 0;
+
+  if (maxX < 0 || maxY < 0) return null;
+  const pad = 16;
+  const x = Math.max(0, minX - pad);
+  const y = Math.max(0, minY - pad);
+  const x2 = Math.min(width, maxX + pad + 1);
+  const y2 = Math.min(height, maxY + pad + 1);
+  return {
+    x,
+    y,
+    width: Math.max(1, x2 - x),
+    height: Math.max(1, y2 - y),
+  };
+}
+
+async function setCroppedAnswerImage(imgEl, src) {
+  try {
+    if (!answerImageCache.has(src)) {
+      answerImageCache.set(
+        src,
+        (async () => {
+          const image = await loadImage(src);
+          const bounds = findContentBounds(image);
+          if (!bounds) return src;
+          const canvas = document.createElement("canvas");
+          canvas.width = bounds.width;
+          canvas.height = bounds.height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return src;
+          ctx.drawImage(image, bounds.x, bounds.y, bounds.width, bounds.height, 0, 0, bounds.width, bounds.height);
+          return canvas.toDataURL("image/jpeg", 0.95);
+        })().catch(() => src)
+      );
+    }
+    const cropped = await answerImageCache.get(src);
+    if (imgEl.isConnected && cropped) {
+      imgEl.src = cropped;
+    }
+  } catch {
+    // Keep the original image if cropping fails.
+  }
+}
+
+function renderSelection() {
+  for (const button of els.options.querySelectorAll(".option")) {
+    button.classList.toggle("selected", selected.has(button.dataset.label));
+  }
+  els.submit.disabled = selected.size === 0;
 }
 
 function isCorrect(question) {
-  if (isOrderedQuestion(question)) {
-    const correctOrder = question.options
-      .map((option, index) => ({ option, index }))
-      .filter(({ option }) => option.correct)
-      .sort((left, right) => optionOrderValue(left.option, left.index) - optionOrderValue(right.option, right.index))
-      .map(({ option }) => option.label);
-    const currentOrder = selectedLabels();
-    return currentOrder.length === correctOrder.length && currentOrder.every((label, index) => label === correctOrder[index]);
-  }
   const correct = new Set(question.options.filter((option) => option.correct).map((option) => option.label));
-  const currentSelection = selectedLabels();
-  return currentSelection.length === correct.size && currentSelection.every((label) => correct.has(label));
+  return selected.size === correct.size && [...selected].every((label) => correct.has(label));
 }
 
 function applyResult(question, correct) {
@@ -278,39 +310,51 @@ function submitAnswer() {
   const correct = isCorrect(current);
   applyResult(current, correct);
 
-  const ordered = isOrderedQuestion(current);
-  const currentSelection = selectedLabels();
-  const correctLabels = ordered
-    ? current.options
-        .map((option, index) => ({ option, index }))
-        .filter(({ option }) => option.correct)
-        .sort((left, right) => optionOrderValue(left.option, left.index) - optionOrderValue(right.option, right.index))
-        .map(({ option }) => option.label)
-        .join(", ")
-    : current.options.filter((option) => option.correct).map((option) => option.label).join(", ");
+  const correctLabels = current.options.filter((option) => option.correct).map((option) => option.label).join(", ");
   for (const button of els.options.querySelectorAll(".option")) {
     const option = current.options.find((item) => item.label === button.dataset.label);
-    const isSelected = currentSelection.includes(option.label);
-    button.classList.toggle("correct", ordered ? correct && isSelected : option.correct);
-    button.classList.toggle("wrong", ordered ? isSelected && !correct : isSelected && !option.correct);
+    button.classList.toggle("correct", option.correct);
+    button.classList.toggle("wrong", selected.has(option.label) && !option.correct);
   }
 
   els.feedback.hidden = false;
   els.feedback.classList.add(correct ? "good" : "bad");
   els.feedback.textContent = correct
     ? "Richtig. Die Frage wurde entsprechend hochgestuft."
-    : ordered
-      ? `Falsch. Richtige Reihenfolge: ${correctLabels}. Die Frage ist jetzt in Stufe ${getState(current).stage}.`
-      : `Falsch. Richtig waere: ${correctLabels}. Die Frage ist jetzt in Stufe ${getState(current).stage}.`;
+    : `Falsch. Richtig waere: ${correctLabels}. Die Frage ist jetzt in Stufe ${getState(current).stage}.`;
   els.submit.disabled = true;
 }
 
 function showEmpty() {
+  const term = els.search.value.trim();
+  const questions = dataset?.questions || [];
+  const allInStage3 = questions.length > 0 && questions.every((question) => getState(question).stage === 3);
+  const hasSearchTerm = term.length > 0;
+
   els.area.hidden = true;
   els.empty.hidden = false;
-  els.meta.textContent = "Keine passende Frage";
-  els.title.textContent = "Runde abgeschlossen";
-  els.badge.textContent = "Fertig";
+  els.meta.textContent = hasSearchTerm ? "Keine Suchtreffer" : "Keine passende Frage";
+  els.title.textContent = hasSearchTerm
+    ? "Keine Fragen gefunden"
+    : allInStage3
+      ? "Alles in Stufe 3."
+      : "Runde abgeschlossen";
+  els.badge.textContent = hasSearchTerm ? "Suche" : allInStage3 ? "Fertig" : "Leer";
+
+  const emptyTitle = els.empty.querySelector("h2");
+  const emptyText = els.empty.querySelector("p");
+  if (emptyTitle && emptyText) {
+    if (hasSearchTerm) {
+      emptyTitle.textContent = "Keine Fragen gefunden";
+      emptyText.textContent = "Zu deiner Suche gibt es keine Treffer. Probiere eine andere FrageID oder einen anderen Text.";
+    } else if (allInStage3) {
+      emptyTitle.textContent = "Alles in Stufe 3.";
+      emptyText.textContent = "Du hast das Ziel erreicht. Du kannst weiter alle Fragen wiederholen oder den Fortschritt zuruecksetzen.";
+    } else {
+      emptyTitle.textContent = "Runde abgeschlossen";
+      emptyText.textContent = "Es gibt in dieser Runde keine passende Frage.";
+    }
+  }
 }
 
 function nextQuestion() {
@@ -335,7 +379,7 @@ function setStandaloneMode() {
 
 async function importPdf(file) {
   if (location.protocol === "file:") {
-    throw new Error("PDF-Import funktioniert nur ueber http://localhost:8765/. Bitte Check It üben ueber die Startdatei oder den lokalen Server oeffnen.");
+    throw new Error("PDF-Import funktioniert nur ueber http://localhost:8765/. Bitte Check It ueber die Startdatei oder den lokalen Server oeffnen.");
   }
   const body = new FormData();
   body.append("pdf", file);
@@ -414,6 +458,32 @@ function closeCodeDialog() {
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return Promise.resolve();
   return navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+
+function setupInstallPrompt() {
+  if (!els.installBtn) return;
+
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+  });
+
+  els.installBtn.addEventListener("click", async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      return;
+    }
+
+    alert(
+      "Die App kann ueber das Browser-Menue installiert werden. In Chrome auf dem Handy: Menue oeffnen und 'App installieren' oder 'Zum Startbildschirm hinzufuegen' waehlen."
+    );
+  });
 }
 
 els.submit.addEventListener("click", submitAnswer);
@@ -504,6 +574,7 @@ async function clearServiceWorkerState() {
 
 async function boot() {
   setStandaloneMode();
+  setupInstallPrompt();
   await clearServiceWorkerState();
 
   try {
