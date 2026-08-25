@@ -305,6 +305,11 @@ button:disabled {
   margin-top: 16px;
 }
 
+.mobile-next {
+  display: none;
+  margin-top: 16px;
+}
+
 .manual {
   margin-top: 16px;
   padding: 14px;
@@ -348,6 +353,45 @@ button:disabled {
   box-shadow: var(--shadow);
 }
 
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(12, 20, 24, 0.45);
+  z-index: 50;
+}
+
+.dialog {
+  width: min(100%, 420px);
+  padding: 20px;
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.dialog-field {
+  margin-top: 14px;
+}
+
+.dialog-field input {
+  min-height: 44px;
+}
+
+.dialog-error {
+  margin: 10px 0 0;
+  color: var(--accent-2);
+  font-weight: 800;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
 body.standalone .sidebar {
   position: sticky;
   top: 0;
@@ -365,8 +409,13 @@ body.standalone .trainer {
   }
 
   .sidebar {
+    order: 2;
     border-right: 0;
     border-bottom: 1px solid var(--line);
+  }
+
+  .trainer {
+    order: 1;
   }
 }
 
@@ -377,6 +426,7 @@ body.standalone .trainer {
   }
 
   .sidebar {
+    order: 2;
     border-right: 0;
     border-bottom: 1px solid var(--line);
     padding: 18px;
@@ -385,7 +435,7 @@ body.standalone .trainer {
 
   .trainer {
     padding: 18px;
-    order: -1;
+    order: 1;
   }
 
   .question-head {
@@ -423,8 +473,12 @@ body.standalone .trainer {
     flex-direction: column;
   }
 
+  .sidebar {
+    order: 2;
+  }
+
   .trainer {
-    order: 0;
+    order: 1;
   }
 
   .sidebar,
@@ -450,6 +504,11 @@ body.standalone .trainer {
     align-items: stretch;
   }
 
+  .mobile-next {
+    display: block;
+    width: 100%;
+  }
+
   .stats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -467,5 +526,9 @@ body.standalone .trainer {
 
   .option-content {
     height: 72px;
+  }
+
+  .dialog {
+    width: 100%;
   }
 }

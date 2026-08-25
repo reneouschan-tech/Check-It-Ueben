@@ -12,6 +12,7 @@ const els = {
   importBtn: document.querySelector("#importBtn"),
   import: document.querySelector("#importInput"),
   installBtn: document.querySelector("#installBtn"),
+  mobileNextBtn: document.querySelector("#mobileNextBtn"),
   datasetInfo: document.querySelector("#datasetInfo"),
   meta: document.querySelector("#questionMeta"),
   title: document.querySelector("#questionTitle"),
@@ -28,6 +29,11 @@ const els = {
   showSolution: document.querySelector("#showSolutionBtn"),
   manualRight: document.querySelector("#manualRightBtn"),
   manualWrong: document.querySelector("#manualWrongBtn"),
+  codeDialog: document.querySelector("#codeDialog"),
+  codeInput: document.querySelector("#codeInput"),
+  codeError: document.querySelector("#codeError"),
+  codeCancel: document.querySelector("#codeCancelBtn"),
+  codeConfirm: document.querySelector("#codeConfirmBtn"),
 };
 
 const IMPORT_CODE = "checkit2026";
@@ -39,6 +45,7 @@ let selected = new Set();
 let answered = false;
 let assetVersion = Date.now();
 let deferredInstallPrompt = null;
+let pendingCodeAction = null;
 const INITIAL_DATASET_URL = `data/questions.json?ts=${Date.now()}`;
 
 window.addEventListener("error", (event) => {
@@ -190,15 +197,20 @@ function isCorrect(question) {
 
 function applyResult(question, correct) {
   const state = getState(question);
-  const firstAttempt = state.attempts === 0;
   state.attempts += 1;
   if (correct) {
     state.correct += 1;
-    if (firstAttempt || state.stage === 2) state.stage = 3;
-    else state.stage = 2;
+    if (state.stage === 1 || state.stage === 2) state.stage = 3;
+    else state.stage = 3;
   } else {
     state.wrong += 1;
-    state.stage = 1;
+    if (state.stage === 1) {
+      state.stage = 2;
+    } else if (state.stage === 2) {
+      state.stage = 1;
+    } else {
+      state.stage = 2;
+    }
   }
   progress[question.id] = state;
   saveProgress();
@@ -223,7 +235,7 @@ function submitAnswer() {
   els.feedback.classList.add(correct ? "good" : "bad");
   els.feedback.textContent = correct
     ? "Richtig. Die Frage wurde entsprechend hochgestuft."
-    : `Falsch. Richtig waere: ${correctLabels}. Die Frage bleibt in Stufe 1.`;
+    : `Falsch. Richtig waere: ${correctLabels}. Die Frage ist jetzt in Stufe ${getState(current).stage}.`;
   els.submit.disabled = true;
 }
 
@@ -278,6 +290,22 @@ async function importPdf(file) {
   }
 }
 
+function openCodeDialog(onSuccess) {
+  pendingCodeAction = onSuccess;
+  if (!els.codeDialog) return;
+  els.codeError.hidden = true;
+  els.codeInput.value = "";
+  els.codeDialog.hidden = false;
+  window.setTimeout(() => els.codeInput.focus(), 0);
+}
+
+function closeCodeDialog() {
+  pendingCodeAction = null;
+  if (els.codeDialog) {
+    els.codeDialog.hidden = true;
+  }
+}
+
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return Promise.resolve();
   return navigator.serviceWorker.register("sw.js").catch(() => {});
@@ -289,25 +317,29 @@ function setupInstallPrompt() {
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferredInstallPrompt = event;
-    els.installBtn.hidden = false;
   });
 
   window.addEventListener("appinstalled", () => {
     deferredInstallPrompt = null;
-    els.installBtn.hidden = true;
   });
 
   els.installBtn.addEventListener("click", async () => {
-    if (!deferredInstallPrompt) return;
-    deferredInstallPrompt.prompt();
-    await deferredInstallPrompt.userChoice;
-    deferredInstallPrompt = null;
-    els.installBtn.hidden = true;
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      return;
+    }
+
+    alert(
+      "Die App kann ueber das Browser-Menue installiert werden. In Chrome auf dem Handy: Menue oeffnen und 'App installieren' oder 'Zum Startbildschirm hinzufuegen' waehlen."
+    );
   });
 }
 
 els.submit.addEventListener("click", submitAnswer);
 els.next.addEventListener("click", nextQuestion);
+els.mobileNextBtn?.addEventListener("click", nextQuestion);
 els.mode.addEventListener("change", nextQuestion);
 els.search.addEventListener("input", nextQuestion);
 els.shuffle.addEventListener("change", nextQuestion);
@@ -328,7 +360,7 @@ els.manualWrong.addEventListener("click", () => {
   applyResult(current, false);
   els.feedback.hidden = false;
   els.feedback.className = "feedback bad";
-  els.feedback.textContent = "Als nicht gewusst bewertet. Die Frage bleibt in Stufe 1.";
+  els.feedback.textContent = `Als nicht gewusst bewertet. Die Frage ist jetzt in Stufe ${getState(current).stage}.`;
 });
 els.reset.addEventListener("click", () => {
   if (!dataset || !confirm("Fortschritt fuer diesen Fragensatz wirklich loeschen?")) return;
@@ -338,12 +370,27 @@ els.reset.addEventListener("click", () => {
   nextQuestion();
 });
 els.importBtn.addEventListener("click", () => {
-  const code = prompt("Code zum Importieren eingeben:");
+  openCodeDialog(() => els.import.click());
+});
+els.codeCancel?.addEventListener("click", closeCodeDialog);
+els.codeConfirm?.addEventListener("click", () => {
+  const code = els.codeInput.value.trim();
   if (code !== IMPORT_CODE) {
-    alert("Falscher Code. Die Dateiauswahl wird nicht geoeffnet.");
+    els.codeError.hidden = false;
+    els.codeInput.focus();
     return;
   }
-  els.import.click();
+  const action = pendingCodeAction;
+  closeCodeDialog();
+  action?.();
+});
+els.codeInput?.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  els.codeConfirm.click();
+});
+els.codeDialog?.addEventListener("click", (event) => {
+  if (event.target === els.codeDialog) closeCodeDialog();
 });
 els.import.addEventListener("change", async (event) => {
   const file = event.target.files[0];

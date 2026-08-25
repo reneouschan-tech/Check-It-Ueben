@@ -1,11 +1,14 @@
-const CACHE_NAME = "checkit-shell-v20260824-9";
+const CACHE_NAME = "checkit-shell-v20260825-3";
 const SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=20260824-9",
-  "./app.js?v=20260824-9",
+  "./styles.css?v=20260825-3",
+  "./app.js?v=20260825-3",
   "./manifest.webmanifest",
-  "./icon.svg",
+  "./checkit-icon-192.png",
+  "./checkit-icon-512.png",
+  "./checkit-apple-touch-icon.png",
+  "./checkit-favicon-32.png",
 ];
 
 self.addEventListener("install", (event) => {
