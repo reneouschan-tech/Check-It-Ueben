@@ -267,7 +267,7 @@ function setStandaloneMode() {
 
 async function importPdf(file) {
   if (location.protocol === "file:") {
-    throw new Error("PDF-Import funktioniert nur ueber http://localhost:8765/. Bitte Check It Üben ueber die Startdatei oder den lokalen Server oeffnen.");
+    throw new Error("PDF-Import funktioniert nur ueber http://localhost:8765/. Bitte Check It üben ueber die Startdatei oder den lokalen Server oeffnen.");
   }
   const body = new FormData();
   body.append("pdf", file);
