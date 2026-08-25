@@ -569,14 +569,18 @@ body.standalone .trainer {
   }
 
   .option-content {
-    height: 108px;
+    height: 190px;
     font-size: 1.45rem;
     line-height: 1.25;
   }
 
   .option-content img {
-    width: 100%;
+    display: block;
+    width: auto;
     max-width: none;
+    height: 165px;
+    object-fit: contain;
+    object-position: left top;
   }
 
   .dialog {
