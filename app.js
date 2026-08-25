@@ -125,9 +125,26 @@ function pickQuestion() {
   return pool[(index + 1 + pool.length) % pool.length];
 }
 
+function isOrderedQuestion(question) {
+  return (question.type || "").toLowerCase().includes("reih");
+}
+
+function optionOrderValue(option) {
+  const match = String(option.text || "").match(/(\d+)\s*$/);
+  return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+}
+
+function orderedCorrectLabels(question) {
+  return question.options
+    .filter((option) => option.correct)
+    .slice()
+    .sort((a, b) => optionOrderValue(a) - optionOrderValue(b))
+    .map((option) => option.label);
+}
+
 function renderQuestion(question) {
   current = question;
-  selected = new Set();
+  selected = isOrderedQuestion(question) ? [] : new Set();
   answered = false;
   const state = getState(question);
   const hasOptions = question.options && question.options.length;
@@ -149,15 +166,18 @@ function renderQuestion(question) {
 
   if (!hasOptions) return;
 
-  const multiple = !question.type.toLowerCase().includes("single");
+  const ordered = isOrderedQuestion(question);
+  const multiple = ordered || !question.type.toLowerCase().includes("single");
   for (const option of question.options) {
     const button = document.createElement("div");
     button.className = "option";
+    if (ordered) button.classList.add("ordered");
     button.role = "button";
     button.tabIndex = 0;
     button.dataset.label = option.label;
     button.innerHTML = `
       <span class="letter">${option.label}</span>
+      <span class="order-badge" aria-hidden="true" hidden></span>
       <span class="option-content">
         ${option.image ? `<img data-answer-image="true" src="${withVersion(option.image)}" alt="Antwort ${option.label}" />` : `<span>${option.text}</span>`}
       </span>
@@ -168,7 +188,11 @@ function renderQuestion(question) {
     }
     button.addEventListener("click", () => {
       if (answered) return;
-      if (multiple) {
+      if (ordered) {
+        const index = selected.indexOf(option.label);
+        if (index !== -1) selected.splice(index, 1);
+        selected.push(option.label);
+      } else if (multiple) {
         selected.has(option.label) ? selected.delete(option.label) : selected.add(option.label);
       } else {
         selected = new Set([option.label]);
@@ -270,13 +294,25 @@ async function setCroppedAnswerImage(imgEl, src) {
 }
 
 function renderSelection() {
+  const ordered = Array.isArray(selected);
   for (const button of els.options.querySelectorAll(".option")) {
-    button.classList.toggle("selected", selected.has(button.dataset.label));
+    const label = button.dataset.label;
+    const selectedIndex = ordered ? selected.indexOf(label) : selected.has(label) ? 0 : -1;
+    button.classList.toggle("selected", selectedIndex !== -1);
+    const badge = button.querySelector(".order-badge");
+    if (badge) {
+      badge.hidden = !ordered || selectedIndex === -1;
+      badge.textContent = selectedIndex === -1 ? "" : String(selectedIndex + 1);
+    }
   }
-  els.submit.disabled = selected.size === 0;
+  els.submit.disabled = ordered ? selected.length === 0 : selected.size === 0;
 }
 
 function isCorrect(question) {
+  if (isOrderedQuestion(question)) {
+    const correct = orderedCorrectLabels(question);
+    return selected.length === correct.length && selected.every((label, index) => label === correct[index]);
+  }
   const correct = new Set(question.options.filter((option) => option.correct).map((option) => option.label));
   return selected.size === correct.size && [...selected].every((label) => correct.has(label));
 }
@@ -310,18 +346,31 @@ function submitAnswer() {
   const correct = isCorrect(current);
   applyResult(current, correct);
 
-  const correctLabels = current.options.filter((option) => option.correct).map((option) => option.label).join(", ");
+  const ordered = isOrderedQuestion(current);
+  const correctOrder = ordered ? orderedCorrectLabels(current) : null;
+  const correctLabels = ordered
+    ? correctOrder.join(" → ")
+    : current.options.filter((option) => option.correct).map((option) => option.label).join(", ");
   for (const button of els.options.querySelectorAll(".option")) {
     const option = current.options.find((item) => item.label === button.dataset.label);
-    button.classList.toggle("correct", option.correct);
-    button.classList.toggle("wrong", selected.has(option.label) && !option.correct);
+    const selectedIndex = ordered ? selected.indexOf(option.label) : selected.has(option.label) ? 0 : -1;
+    const correctIndex = ordered ? correctOrder.indexOf(option.label) : -1;
+    if (ordered) {
+      button.classList.toggle("correct", selectedIndex !== -1 && selectedIndex === correctIndex);
+      button.classList.toggle("wrong", selectedIndex !== -1 && selectedIndex !== correctIndex);
+    } else {
+      button.classList.toggle("correct", option.correct);
+      button.classList.toggle("wrong", selected.has(option.label) && !option.correct);
+    }
   }
 
   els.feedback.hidden = false;
   els.feedback.classList.add(correct ? "good" : "bad");
   els.feedback.textContent = correct
     ? "Richtig. Die Frage wurde entsprechend hochgestuft."
-    : `Falsch. Richtig waere: ${correctLabels}. Die Frage ist jetzt in Stufe ${getState(current).stage}.`;
+    : ordered
+      ? `Falsch. Richtige Reihenfolge: ${correctLabels}. Die Frage ist jetzt in Stufe ${getState(current).stage}.`
+      : `Falsch. Richtig waere: ${correctLabels}. Die Frage ist jetzt in Stufe ${getState(current).stage}.`;
   els.submit.disabled = true;
 }
 

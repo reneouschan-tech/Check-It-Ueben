@@ -246,6 +246,7 @@ button:disabled {
 }
 
 .option {
+  position: relative;
   display: grid;
   grid-template-columns: 48px 1fr;
   align-items: start;
@@ -262,6 +263,10 @@ button:disabled {
   touch-action: manipulation;
 }
 
+.option.ordered {
+  padding-right: 52px;
+}
+
 .option .letter {
   display: grid;
   place-items: center;
@@ -269,6 +274,22 @@ button:disabled {
   height: 40px;
   border-radius: 8px;
   background: #e9eef0;
+  font-weight: 900;
+}
+
+.order-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #dfeeed;
+  color: #0e625e;
+  font-size: 12px;
   font-weight: 900;
 }
 
