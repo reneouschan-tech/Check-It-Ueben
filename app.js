@@ -290,6 +290,45 @@ async function importPdf(file) {
   }
 }
 
+async function handleImportedFile(file) {
+  if (!file) return;
+  if (file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf") {
+    await importPdf(file);
+    return;
+  }
+  const data = JSON.parse(await file.text());
+  await loadDataset(data, true);
+}
+
+function openImportPicker() {
+  if (typeof window.showOpenFilePicker === "function") {
+    window
+      .showOpenFilePicker({
+        multiple: false,
+        types: [
+          {
+            description: "PDF oder JSON",
+            accept: {
+              "application/pdf": [".pdf"],
+              "application/json": [".json"],
+            },
+          },
+        ],
+      })
+      .then(([handle]) => handle.getFile())
+      .then((file) => handleImportedFile(file))
+      .catch((error) => {
+        if (error?.name === "AbortError") return;
+        els.import.value = "";
+        els.import.click();
+      });
+    return;
+  }
+
+  els.import.value = "";
+  els.import.click();
+}
+
 function openCodeDialog(onSuccess) {
   pendingCodeAction = onSuccess;
   if (!els.codeDialog) return;
@@ -370,7 +409,7 @@ els.reset.addEventListener("click", () => {
   nextQuestion();
 });
 els.importBtn.addEventListener("click", () => {
-  openCodeDialog(() => els.import.click());
+  openCodeDialog(openImportPicker);
 });
 els.codeCancel?.addEventListener("click", closeCodeDialog);
 els.codeConfirm?.addEventListener("click", () => {
@@ -394,14 +433,8 @@ els.codeDialog?.addEventListener("click", (event) => {
 });
 els.import.addEventListener("change", async (event) => {
   const file = event.target.files[0];
-  if (!file) return;
   try {
-    if (file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf") {
-      await importPdf(file);
-    } else {
-      const data = JSON.parse(await file.text());
-      await loadDataset(data, true);
-    }
+    await handleImportedFile(file);
   } catch (error) {
     alert(error.message);
   } finally {
