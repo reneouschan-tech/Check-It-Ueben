@@ -363,6 +363,10 @@ button:disabled {
   z-index: 50;
 }
 
+.dialog-backdrop[hidden] {
+  display: none !important;
+}
+
 .dialog {
   width: min(100%, 420px);
   padding: 20px;
