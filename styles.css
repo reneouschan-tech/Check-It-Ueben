@@ -544,7 +544,8 @@ body.standalone .trainer {
 
   .option-content {
     height: 72px;
-    font-size: 1.05rem;
+    font-size: 1.16rem;
+    line-height: 1.55;
   }
 
   .dialog {
