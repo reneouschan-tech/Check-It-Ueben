@@ -289,6 +289,21 @@ button:disabled {
   background: #e9eef0;
   font-weight: 900;
   font-size: 1.05rem;
+  line-height: 1;
+  gap: 2px;
+}
+
+.option .letter-label,
+.option .order {
+  display: block;
+  text-align: center;
+}
+
+.option .order {
+  min-height: 0.9em;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--accent);
 }
 
 .option-content {
@@ -566,6 +581,10 @@ body.standalone .trainer {
     width: 36px;
     height: 36px;
     font-size: 0.98rem;
+  }
+
+  .option .order {
+    font-size: 0.62rem;
   }
 
   .option-content {

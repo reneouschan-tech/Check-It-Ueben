@@ -81,6 +81,37 @@ function getState(question) {
   return progress[question.id] || { stage: 1, attempts: 0, correct: 0, wrong: 0 };
 }
 
+function isOrderedQuestion(question) {
+  const type = String(question?.type || "").toLowerCase();
+  return type.includes("reihung") || type.includes("textbaustein");
+}
+
+function optionOrderValue(option, index) {
+  const text = String(option?.text || "");
+  const match = text.match(/(\d+)\s*$/);
+  return match ? Number(match[1]) : index + 1;
+}
+
+function selectedLabels() {
+  return Array.isArray(selected) ? [...selected] : [...selected];
+}
+
+function selectedHas(label) {
+  return Array.isArray(selected) ? selected.includes(label) : selected.has(label);
+}
+
+function toggleSelectedLabel(label, ordered) {
+  if (ordered) {
+    const index = selected.indexOf(label);
+    if (index >= 0) selected.splice(index, 1);
+    else selected.push(label);
+    return;
+  }
+
+  if (selected.has(label)) selected.delete(label);
+  else selected.add(label);
+}
+
 function updateStats() {
   const counts = { 1: 0, 2: 0, 3: 0 };
   for (const question of dataset.questions) counts[getState(question).stage] += 1;
@@ -124,7 +155,8 @@ function pickQuestion() {
 
 function renderQuestion(question) {
   current = question;
-  selected = new Set();
+  const ordered = isOrderedQuestion(question);
+  selected = ordered ? [] : new Set();
   answered = false;
   const state = getState(question);
   const hasOptions = question.options && question.options.length;
@@ -146,7 +178,7 @@ function renderQuestion(question) {
 
   if (!hasOptions) return;
 
-  const multiple = !question.type.toLowerCase().includes("single");
+  const multiple = ordered ? true : !question.type.toLowerCase().includes("single");
   for (const option of question.options) {
     const button = document.createElement("div");
     button.className = "option";
@@ -154,15 +186,20 @@ function renderQuestion(question) {
     button.tabIndex = 0;
     button.dataset.label = option.label;
     button.innerHTML = `
-      <span class="letter">${option.label}</span>
+      <span class="letter">
+        <span class="letter-label">${option.label}</span>
+        <span class="order" aria-hidden="true"></span>
+      </span>
       <span class="option-content">
         ${option.image ? `<img src="${withVersion(option.image)}" alt="Antwort ${option.label}" />` : `<span>${option.text}</span>`}
       </span>
     `;
     button.addEventListener("click", () => {
       if (answered) return;
-      if (multiple) {
-        selected.has(option.label) ? selected.delete(option.label) : selected.add(option.label);
+      if (ordered) {
+        toggleSelectedLabel(option.label, true);
+      } else if (multiple) {
+        toggleSelectedLabel(option.label, false);
       } else {
         selected = new Set([option.label]);
       }
@@ -182,15 +219,34 @@ function withVersion(path) {
 }
 
 function renderSelection() {
+  const ordered = current ? isOrderedQuestion(current) : false;
+  const labels = selectedLabels();
   for (const button of els.options.querySelectorAll(".option")) {
-    button.classList.toggle("selected", selected.has(button.dataset.label));
+    const label = button.dataset.label;
+    const isSelected = selectedHas(label);
+    button.classList.toggle("selected", isSelected);
+    const orderBadge = button.querySelector(".order");
+    if (orderBadge) {
+      const orderIndex = ordered ? labels.indexOf(label) : -1;
+      orderBadge.textContent = orderIndex >= 0 ? String(orderIndex + 1) : "";
+    }
   }
-  els.submit.disabled = selected.size === 0;
+  els.submit.disabled = labels.length === 0;
 }
 
 function isCorrect(question) {
+  if (isOrderedQuestion(question)) {
+    const correctOrder = question.options
+      .map((option, index) => ({ option, index }))
+      .filter(({ option }) => option.correct)
+      .sort((left, right) => optionOrderValue(left.option, left.index) - optionOrderValue(right.option, right.index))
+      .map(({ option }) => option.label);
+    const currentOrder = selectedLabels();
+    return currentOrder.length === correctOrder.length && currentOrder.every((label, index) => label === correctOrder[index]);
+  }
   const correct = new Set(question.options.filter((option) => option.correct).map((option) => option.label));
-  return selected.size === correct.size && [...selected].every((label) => correct.has(label));
+  const currentSelection = selectedLabels();
+  return currentSelection.length === correct.size && currentSelection.every((label) => correct.has(label));
 }
 
 function applyResult(question, correct) {
@@ -222,18 +278,30 @@ function submitAnswer() {
   const correct = isCorrect(current);
   applyResult(current, correct);
 
-  const correctLabels = current.options.filter((option) => option.correct).map((option) => option.label).join(", ");
+  const ordered = isOrderedQuestion(current);
+  const currentSelection = selectedLabels();
+  const correctLabels = ordered
+    ? current.options
+        .map((option, index) => ({ option, index }))
+        .filter(({ option }) => option.correct)
+        .sort((left, right) => optionOrderValue(left.option, left.index) - optionOrderValue(right.option, right.index))
+        .map(({ option }) => option.label)
+        .join(", ")
+    : current.options.filter((option) => option.correct).map((option) => option.label).join(", ");
   for (const button of els.options.querySelectorAll(".option")) {
     const option = current.options.find((item) => item.label === button.dataset.label);
-    button.classList.toggle("correct", option.correct);
-    button.classList.toggle("wrong", selected.has(option.label) && !option.correct);
+    const isSelected = currentSelection.includes(option.label);
+    button.classList.toggle("correct", ordered ? correct && isSelected : option.correct);
+    button.classList.toggle("wrong", ordered ? isSelected && !correct : isSelected && !option.correct);
   }
 
   els.feedback.hidden = false;
   els.feedback.classList.add(correct ? "good" : "bad");
   els.feedback.textContent = correct
     ? "Richtig. Die Frage wurde entsprechend hochgestuft."
-    : `Falsch. Richtig waere: ${correctLabels}. Die Frage ist jetzt in Stufe ${getState(current).stage}.`;
+    : ordered
+      ? `Falsch. Richtige Reihenfolge: ${correctLabels}. Die Frage ist jetzt in Stufe ${getState(current).stage}.`
+      : `Falsch. Richtig waere: ${correctLabels}. Die Frage ist jetzt in Stufe ${getState(current).stage}.`;
   els.submit.disabled = true;
 }
 
