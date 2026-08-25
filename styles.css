@@ -574,6 +574,11 @@ body.standalone .trainer {
     line-height: 1.25;
   }
 
+  .option-content img {
+    width: 100%;
+    max-width: none;
+  }
+
   .dialog {
     width: 100%;
   }
