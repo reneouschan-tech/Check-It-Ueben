@@ -1,9 +1,9 @@
-const CACHE_NAME = "checkit-shell-v20260829-1";
+const CACHE_NAME = "checkit-shell-v20260829-2";
 const SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=20260829-1",
-  "./app.js?v=20260829-1",
+  "./styles.css?v=20260829-2",
+  "./app.js?v=20260829-2",
   "./manifest.webmanifest",
   "./checkit-icon-192.png",
   "./checkit-icon-512.png",
