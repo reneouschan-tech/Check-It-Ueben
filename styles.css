@@ -72,6 +72,22 @@ select {
   background: #edf2f3;
 }
 
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-logo {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
+  display: block;
+  border-radius: 14px;
+  object-fit: cover;
+  box-shadow: 0 6px 18px rgba(28, 44, 52, 0.12);
+}
+
 .eyebrow {
   margin: 0 0 6px;
   color: var(--accent);
@@ -529,6 +545,12 @@ body.standalone .trainer {
   .trainer {
     padding-left: 16px;
     padding-right: 16px;
+  }
+
+  .brand-logo {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
   }
 
   .question-image img,
