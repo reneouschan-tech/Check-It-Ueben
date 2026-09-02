@@ -26,6 +26,30 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+html {
+  scrollbar-color: var(--accent) #e2eaec;
+  scrollbar-width: auto;
+}
+
+html::-webkit-scrollbar {
+  width: 16px;
+}
+
+html::-webkit-scrollbar-track {
+  background: #e2eaec;
+}
+
+html::-webkit-scrollbar-thumb {
+  min-height: 48px;
+  border: 3px solid #e2eaec;
+  border-radius: 9px;
+  background: var(--accent);
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: #0f5c58;
+}
+
 button,
 input,
 select {
