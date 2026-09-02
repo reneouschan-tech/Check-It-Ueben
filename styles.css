@@ -32,7 +32,7 @@ html {
 }
 
 html::-webkit-scrollbar {
-  width: 20px;
+  width: 30px;
 }
 
 html::-webkit-scrollbar-track {
@@ -42,8 +42,8 @@ html::-webkit-scrollbar-track {
 
 html::-webkit-scrollbar-thumb {
   min-height: 56px;
-  border: 4px solid #e2eaec;
-  border-radius: 10px;
+  border: 5px solid #e2eaec;
+  border-radius: 15px;
   background: #1687e8;
 }
 
@@ -469,13 +469,13 @@ body.standalone .trainer {
   }
 
   .sidebar {
-    order: 2;
+    order: 1;
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
 
   .trainer {
-    order: 1;
+    order: 2;
   }
 }
 
@@ -486,7 +486,7 @@ body.standalone .trainer {
   }
 
   .sidebar {
-    order: 2;
+    order: 1;
     border-right: 0;
     border-bottom: 1px solid var(--line);
     padding: 18px;
@@ -495,7 +495,11 @@ body.standalone .trainer {
 
   .trainer {
     padding: 18px;
-    order: 1;
+    order: 2;
+  }
+
+  .sidebar #nextBtn {
+    display: none;
   }
 
   .question-head {
@@ -534,11 +538,11 @@ body.standalone .trainer {
   }
 
   .sidebar {
-    order: 2;
+    order: 1;
   }
 
   .trainer {
-    order: 1;
+    order: 2;
   }
 
   .sidebar,
@@ -551,6 +555,10 @@ body.standalone .trainer {
     width: 48px;
     height: 48px;
     border-radius: 12px;
+  }
+
+  h2 {
+    font-size: 16px;
   }
 
   .question-image img,
@@ -582,7 +590,7 @@ body.standalone .trainer {
   .option {
     grid-template-columns: 42px 1fr;
     gap: 10px;
-    min-height: 96px;
+    min-height: 64px;
   }
 
   .option .letter {
