@@ -27,6 +27,8 @@ body {
 }
 
 html {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
   scrollbar-color: #1687e8 #e2eaec;
   scrollbar-width: auto;
 }
@@ -61,6 +63,25 @@ select {
   display: grid;
   grid-template-columns: minmax(280px, 340px) 1fr;
   min-height: 100vh;
+}
+
+.site-footer {
+  padding: 18px 24px 22px;
+  border-top: 1px solid var(--line);
+  background: #edf2f3;
+  color: #64727a;
+  text-align: center;
+  font-size: 13px;
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+.site-disclaimer {
+  max-width: 900px;
+  margin: 8px auto 0 !important;
+  line-height: 1.45;
 }
 
 .sidebar {
@@ -549,6 +570,11 @@ body.standalone .trainer {
   .trainer {
     padding-left: 16px;
     padding-right: 16px;
+  }
+
+  .site-footer {
+    padding: 16px;
+    font-size: 12px;
   }
 
   .brand-logo {
