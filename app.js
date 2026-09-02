@@ -11,7 +11,6 @@ const els = {
   reset: document.querySelector("#resetBtn"),
   importBtn: document.querySelector("#importBtn"),
   import: document.querySelector("#importInput"),
-  installBtn: document.querySelector("#installBtn"),
   mobileNextBtn: document.querySelector("#mobileNextBtn"),
   datasetInfo: document.querySelector("#datasetInfo"),
   meta: document.querySelector("#questionMeta"),
@@ -44,7 +43,6 @@ let current = null;
 let selected = new Set();
 let answered = false;
 let assetVersion = Date.now();
-let deferredInstallPrompt = null;
 let pendingCodeAction = null;
 const answerImageCache = new Map();
 const INITIAL_DATASET_URL = `data/questions.json?ts=${Date.now()}`;
@@ -457,32 +455,6 @@ function registerServiceWorker() {
   return navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 
-function setupInstallPrompt() {
-  if (!els.installBtn) return;
-
-  window.addEventListener("beforeinstallprompt", (event) => {
-    event.preventDefault();
-    deferredInstallPrompt = event;
-  });
-
-  window.addEventListener("appinstalled", () => {
-    deferredInstallPrompt = null;
-  });
-
-  els.installBtn.addEventListener("click", async () => {
-    if (deferredInstallPrompt) {
-      deferredInstallPrompt.prompt();
-      await deferredInstallPrompt.userChoice;
-      deferredInstallPrompt = null;
-      return;
-    }
-
-    alert(
-      "Die App kann ueber das Browser-Menue installiert werden. In Chrome auf dem Handy: Menue oeffnen und 'App installieren' oder 'Zum Startbildschirm hinzufuegen' waehlen."
-    );
-  });
-}
-
 els.submit.addEventListener("click", submitAnswer);
 els.next.addEventListener("click", nextQuestion);
 els.mobileNextBtn?.addEventListener("click", nextQuestion);
@@ -571,7 +543,6 @@ async function clearServiceWorkerState() {
 
 async function boot() {
   setStandaloneMode();
-  setupInstallPrompt();
   await clearServiceWorkerState();
 
   try {
