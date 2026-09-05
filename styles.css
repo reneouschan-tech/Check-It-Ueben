@@ -502,6 +502,12 @@ body.standalone .trainer {
     gap: 16px;
   }
 
+  body.standalone .sidebar {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
   .trainer {
     padding: 18px;
     order: 2;
