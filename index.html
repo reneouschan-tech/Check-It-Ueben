@@ -71,8 +71,6 @@
         <section class="actions">
           <button id="nextBtn" type="button">Naechste Frage</button>
           <button id="resetBtn" type="button" class="secondary">Fortschritt loeschen</button>
-          <button id="importBtn" type="button" class="secondary">PDF/Fragensatz importieren (Codegeschuetzt)</button>
-          <input id="importInput" class="hidden-file" type="file" accept="application/pdf,.pdf,application/json,.json" />
         </section>
 
         <p id="datasetInfo" class="muted"></p>
@@ -128,22 +126,6 @@
       <p class="site-disclaimer">Hinweis: Dieses Programm dient ausschließlich als Lernhilfe. Für die Richtigkeit, Vollständigkeit und Aktualität der Fragen und Antworten wird keine Gewähr übernommen. Maßgeblich sind ausschließlich die jeweils gültigen offiziellen Unterlagen und Vorschriften. Die Nutzung erfolgt auf eigene Verantwortung.</p>
     </footer>
 
-    <div id="codeDialog" class="dialog-backdrop" hidden>
-      <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="codeDialogTitle">
-        <h2 id="codeDialogTitle">Code eingeben</h2>
-        <p>Nur wer den Code kennt, kann den Fragensatz importieren oder aendern.</p>
-        <label class="dialog-field">
-          Code
-          <input id="codeInput" type="password" autocomplete="off" inputmode="text" />
-        </label>
-        <p id="codeError" class="dialog-error" hidden>Falscher Code.</p>
-        <div class="dialog-actions">
-          <button id="codeCancelBtn" type="button" class="secondary">Abbrechen</button>
-          <button id="codeConfirmBtn" type="button">Weiter</button>
-        </div>
-      </div>
-    </div>
-
-    <script src="app.js?v=20260902-2"></script>
+    <script src="app.js?v=20260905-1"></script>
   </body>
 </html>

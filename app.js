@@ -9,8 +9,6 @@ const els = {
   shuffle: document.querySelector("#shuffleToggle"),
   next: document.querySelector("#nextBtn"),
   reset: document.querySelector("#resetBtn"),
-  importBtn: document.querySelector("#importBtn"),
-  import: document.querySelector("#importInput"),
   mobileNextBtn: document.querySelector("#mobileNextBtn"),
   datasetInfo: document.querySelector("#datasetInfo"),
   meta: document.querySelector("#questionMeta"),
@@ -28,14 +26,7 @@ const els = {
   showSolution: document.querySelector("#showSolutionBtn"),
   manualRight: document.querySelector("#manualRightBtn"),
   manualWrong: document.querySelector("#manualWrongBtn"),
-  codeDialog: document.querySelector("#codeDialog"),
-  codeInput: document.querySelector("#codeInput"),
-  codeError: document.querySelector("#codeError"),
-  codeCancel: document.querySelector("#codeCancelBtn"),
-  codeConfirm: document.querySelector("#codeConfirmBtn"),
 };
-
-const IMPORT_CODE = "checkit2026";
 
 let dataset = null;
 let progress = {};
@@ -43,7 +34,6 @@ let current = null;
 let selected = new Set();
 let answered = false;
 let assetVersion = Date.now();
-let pendingCodeAction = null;
 const answerImageCache = new Map();
 const INITIAL_DATASET_URL = `data/questions.json?ts=${Date.now()}`;
 
@@ -372,84 +362,6 @@ function setStandaloneMode() {
   document.body.classList.toggle("standalone", standalone);
 }
 
-async function importPdf(file) {
-  if (location.protocol === "file:") {
-    throw new Error("PDF-Import funktioniert nur ueber http://localhost:8765/. Bitte Check It ueber die Startdatei oder den lokalen Server oeffnen.");
-  }
-  const body = new FormData();
-  body.append("pdf", file);
-  els.importBtn.disabled = true;
-  els.importBtn.textContent = "PDF wird umgewandelt...";
-  try {
-    const response = await fetch("/api/import-pdf", {
-      method: "POST",
-      body,
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || "PDF konnte nicht importiert werden.");
-    await loadDataset(result.dataset, true);
-    alert(`PDF importiert: ${result.count} Fragen geladen.`);
-  } finally {
-    els.importBtn.disabled = false;
-    els.importBtn.textContent = "PDF/Fragensatz importieren (Codegeschuetzt)";
-  }
-}
-
-async function handleImportedFile(file) {
-  if (!file) return;
-  if (file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf") {
-    await importPdf(file);
-    return;
-  }
-  const data = JSON.parse(await file.text());
-  await loadDataset(data, true);
-}
-
-function openImportPicker() {
-  if (typeof window.showOpenFilePicker === "function") {
-    window
-      .showOpenFilePicker({
-        multiple: false,
-        types: [
-          {
-            description: "PDF oder JSON",
-            accept: {
-              "application/pdf": [".pdf"],
-              "application/json": [".json"],
-            },
-          },
-        ],
-      })
-      .then(([handle]) => handle.getFile())
-      .then((file) => handleImportedFile(file))
-      .catch((error) => {
-        if (error?.name === "AbortError") return;
-        els.import.value = "";
-        els.import.click();
-      });
-    return;
-  }
-
-  els.import.value = "";
-  els.import.click();
-}
-
-function openCodeDialog(onSuccess) {
-  pendingCodeAction = onSuccess;
-  if (!els.codeDialog) return;
-  els.codeError.hidden = true;
-  els.codeInput.value = "";
-  els.codeDialog.hidden = false;
-  window.setTimeout(() => els.codeInput.focus(), 0);
-}
-
-function closeCodeDialog() {
-  pendingCodeAction = null;
-  if (els.codeDialog) {
-    els.codeDialog.hidden = true;
-  }
-}
-
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return Promise.resolve();
   return navigator.serviceWorker.register("sw.js").catch(() => {});
@@ -487,40 +399,6 @@ els.reset.addEventListener("click", () => {
   updateStats();
   nextQuestion();
 });
-els.importBtn.addEventListener("click", () => {
-  openCodeDialog(openImportPicker);
-});
-els.codeCancel?.addEventListener("click", closeCodeDialog);
-els.codeConfirm?.addEventListener("click", () => {
-  const code = els.codeInput.value.trim();
-  if (code !== IMPORT_CODE) {
-    els.codeError.hidden = false;
-    els.codeInput.focus();
-    return;
-  }
-  const action = pendingCodeAction;
-  closeCodeDialog();
-  action?.();
-});
-els.codeInput?.addEventListener("keydown", (event) => {
-  if (event.key !== "Enter") return;
-  event.preventDefault();
-  els.codeConfirm.click();
-});
-els.codeDialog?.addEventListener("click", (event) => {
-  if (event.target === els.codeDialog) closeCodeDialog();
-});
-els.import.addEventListener("change", async (event) => {
-  const file = event.target.files[0];
-  try {
-    await handleImportedFile(file);
-  } catch (error) {
-    alert(error.message);
-  } finally {
-    event.target.value = "";
-  }
-});
-
 async function clearServiceWorkerState() {
   if ("serviceWorker" in navigator) {
     try {
