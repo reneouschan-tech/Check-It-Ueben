@@ -287,7 +287,7 @@ const ORDERING_SOLUTIONS = {
   "5414": { A: 1, B: 2, C: 3 },
   "5436": { B: 1, D: 2, C: 3, A: 4 },
   "5619": { E: 1, A: 2, D: 3, C: 4, B: 5 },
-  "5083": { A: 1, B: 2 },
+  "5083": { D: 1, A: 2 },
 };
 
 const ORDERING_TEXT_CLEANUPS = {
