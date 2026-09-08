@@ -44,6 +44,7 @@
             <strong id="goalText">0%</strong>
           </div>
           <div class="progress"><span id="progressBar"></span></div>
+          <p id="progressDetail" class="progress-detail">0 von 0 Fragen in Stufe 3</p>
         </div>
 
         <section class="controls">
@@ -121,11 +122,16 @@
       </section>
     </main>
 
+    <dialog id="imageDialog" class="image-dialog" aria-label="Bildansicht">
+      <button id="closeImageBtn" class="image-dialog-close" type="button" aria-label="Bildansicht schließen">×</button>
+      <img id="zoomedImage" alt="Vergrößerte Ansicht" />
+    </dialog>
+
     <footer class="site-footer">
       <p>Copyright by ULV Team Ws/Pb/Ams</p>
       <p class="site-disclaimer">Hinweis: Dieses Programm dient ausschließlich als Lernhilfe. Für die Richtigkeit, Vollständigkeit und Aktualität der Fragen und Antworten wird keine Gewähr übernommen. Maßgeblich sind ausschließlich die jeweils gültigen offiziellen Unterlagen und Vorschriften. Die Nutzung erfolgt auf eigene Verantwortung.</p>
     </footer>
 
-    <script src="app.js?v=20260908-8"></script>
+    <script src="app.js?v=20260908-9"></script>
   </body>
 </html>

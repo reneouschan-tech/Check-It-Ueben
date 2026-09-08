@@ -3,6 +3,7 @@ const els = {
   stage2: document.querySelector("#stage2Count"),
   stage3: document.querySelector("#stage3Count"),
   goalText: document.querySelector("#goalText"),
+  progressDetail: document.querySelector("#progressDetail"),
   progressBar: document.querySelector("#progressBar"),
   mode: document.querySelector("#modeSelect"),
   search: document.querySelector("#searchInput"),
@@ -18,6 +19,9 @@ const els = {
   area: document.querySelector("#questionArea"),
   questionImage: document.querySelector("#questionImage"),
   solutionImage: document.querySelector("#solutionImage"),
+  imageDialog: document.querySelector("#imageDialog"),
+  zoomedImage: document.querySelector("#zoomedImage"),
+  closeImageBtn: document.querySelector("#closeImageBtn"),
   options: document.querySelector("#optionList"),
   submit: document.querySelector("#submitBtn"),
   feedback: document.querySelector("#feedback"),
@@ -84,6 +88,7 @@ function updateStats() {
   els.stage3.textContent = counts[3];
   els.goalText.textContent = `${pct}%`;
   els.progressBar.style.width = `${pct}%`;
+  els.progressDetail.textContent = `${done} von ${total} Fragen in Stufe 3`;
   const removed = dataset.removedCount || 0;
   const otherIssues = (dataset.validationIssues || []).filter((issue) => !issue.startsWith("leerer Eintrag"));
   const validationText = removed
@@ -483,6 +488,17 @@ function setStandaloneMode() {
   document.body.classList.toggle("standalone", standalone);
 }
 
+function openImagePreview(image) {
+  if (!image?.src || !els.imageDialog?.showModal) return;
+  els.zoomedImage.src = image.src;
+  els.zoomedImage.alt = image.alt || "Vergrößerte Ansicht";
+  els.imageDialog.showModal();
+}
+
+function closeImagePreview() {
+  if (els.imageDialog?.open) els.imageDialog.close();
+}
+
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return Promise.resolve();
   return navigator.serviceWorker.register("sw.js").catch(() => {});
@@ -496,6 +512,12 @@ els.search.addEventListener("input", nextQuestion);
 els.shuffle.addEventListener("change", nextQuestion);
 els.showSolution.addEventListener("click", () => {
   els.solution.open = true;
+});
+els.questionImage.addEventListener("click", () => openImagePreview(els.questionImage));
+els.solutionImage.addEventListener("click", () => openImagePreview(els.solutionImage));
+els.closeImageBtn?.addEventListener("click", closeImagePreview);
+els.imageDialog?.addEventListener("click", (event) => {
+  if (event.target === els.imageDialog) closeImagePreview();
 });
 els.manualRight.addEventListener("click", () => {
   if (!current || answered) return;
