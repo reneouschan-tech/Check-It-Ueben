@@ -32,6 +32,7 @@ let dataset = null;
 let progress = {};
 let current = null;
 let selected = new Set();
+let selectedOrder = [];
 let answered = false;
 let assetVersion = Date.now();
 const answerImageCache = new Map();
@@ -116,6 +117,7 @@ function pickQuestion() {
 function renderQuestion(question) {
   current = question;
   selected = new Set();
+  selectedOrder = [];
   answered = false;
   const state = getState(question);
   const hasOptions = question.options && question.options.length;
@@ -138,9 +140,10 @@ function renderQuestion(question) {
   if (!hasOptions) return;
 
   const multiple = !question.type.toLowerCase().includes("single");
+  const ordering = isOrderingQuestion(question);
   for (const option of question.options) {
     const button = document.createElement("div");
-    button.className = "option";
+    button.className = ordering ? "option ordering" : "option";
     button.role = "button";
     button.tabIndex = 0;
     button.dataset.label = option.label;
@@ -153,7 +156,12 @@ function renderQuestion(question) {
     button.append(letter, content);
     button.addEventListener("click", () => {
       if (answered) return;
-      if (multiple) {
+      if (ordering) {
+        const index = selectedOrder.indexOf(option.label);
+        if (index === -1) selectedOrder.push(option.label);
+        else selectedOrder.splice(index, 1);
+        selected = new Set(selectedOrder);
+      } else if (multiple) {
         selected.has(option.label) ? selected.delete(option.label) : selected.add(option.label);
       } else {
         selected = new Set([option.label]);
@@ -256,12 +264,49 @@ async function setCroppedAnswerImage(imgEl, src) {
 
 function renderSelection() {
   for (const button of els.options.querySelectorAll(".option")) {
-    button.classList.toggle("selected", selected.has(button.dataset.label));
+    const label = button.dataset.label;
+    const ordering = button.classList.contains("ordering");
+    const selectedIndex = ordering ? selectedOrder.indexOf(label) : -1;
+    button.classList.toggle("selected", ordering ? selectedIndex !== -1 : selected.has(label));
+    if (ordering) {
+      button.querySelector(".letter").textContent = selectedIndex === -1 ? label : `${selectedIndex + 1}. ${label}`;
+    }
   }
   els.submit.disabled = selected.size === 0;
 }
 
+function isOrderingQuestion(question) {
+  return question.type === "Reihung" || String(question.id) === "5083";
+}
+
+const ORDERING_SOLUTIONS = {
+  "4880": { C: 1, A: 2, B: 3, D: 4, E: 5 },
+  "5416": { D: 1, A: 2, C: 3, B: 4, F: 5, E: 6 },
+  "5232": { D: 1, E: 2, C: 3, A: 4, B: 5 },
+  "175": { D: 1, B: 2, A: 3, C: 4 },
+  "5414": { A: 1, B: 2, C: 3 },
+  "5436": { B: 1, D: 2, C: 3, A: 4 },
+  "5619": { E: 1, A: 2, D: 3, C: 4, B: 5 },
+  "5083": { A: 1, B: 2, D: 3, C: 4 },
+};
+
+function getOrderingLabels(question) {
+  return question.options
+    .filter((option) => String(question.id) === "5083" || option.correct)
+    .map((option, index) => {
+      const knownOrder = ORDERING_SOLUTIONS[String(question.id)]?.[option.label];
+      const match = String(option.text || "").match(/(?:^|\s)(\d+)\s*$/);
+      return { label: option.label, order: knownOrder ?? (match ? Number(match[1]) : index + 1) };
+    })
+    .sort((a, b) => a.order - b.order)
+    .map((option) => option.label);
+}
+
 function isCorrect(question) {
+  if (isOrderingQuestion(question)) {
+    const correctOrder = getOrderingLabels(question);
+    return selectedOrder.length === correctOrder.length && selectedOrder.every((label, index) => label === correctOrder[index]);
+  }
   const correct = new Set(question.options.filter((option) => option.correct).map((option) => option.label));
   return selected.size === correct.size && [...selected].every((label) => correct.has(label));
 }
@@ -295,7 +340,9 @@ function submitAnswer() {
   const correct = isCorrect(current);
   applyResult(current, correct);
 
-  const correctLabels = current.options.filter((option) => option.correct).map((option) => option.label).join(", ");
+  const correctLabels = isOrderingQuestion(current)
+    ? getOrderingLabels(current).join(" -> ")
+    : current.options.filter((option) => option.correct).map((option) => option.label).join(", ");
   for (const button of els.options.querySelectorAll(".option")) {
     const option = current.options.find((item) => item.label === button.dataset.label);
     button.classList.toggle("correct", option.correct);

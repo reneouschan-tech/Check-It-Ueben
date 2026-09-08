@@ -331,6 +331,14 @@ button:disabled {
   font-weight: 900;
 }
 
+.option.ordering {
+  grid-template-columns: 64px 1fr;
+}
+
+.option.ordering .letter {
+  width: 56px;
+}
+
 .option-content {
   display: block;
   min-width: 0;
@@ -615,9 +623,17 @@ body.standalone .trainer {
     min-height: 64px;
   }
 
+  .option.ordering {
+    grid-template-columns: 58px 1fr;
+  }
+
   .option .letter {
     width: 36px;
     height: 36px;
+  }
+
+  .option.ordering .letter {
+    width: 52px;
   }
 
   .option-content {
