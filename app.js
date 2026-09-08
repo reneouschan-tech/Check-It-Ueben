@@ -302,6 +302,11 @@ const ORDERING_TEXT_CLEANUPS = {
 };
 
 function cleanOrderingText(question, option) {
+  // Frage 5083 stores the order marker at the end of every answer text.
+  // It must stay hidden until the user selects the answer.
+  if (String(question.id) === "5083") {
+    return String(option.text || "").replace(/\s[1-4]\s*$/, "").trim();
+  }
   const cleanup = ORDERING_TEXT_CLEANUPS[String(question.id)]?.[option.label];
   return cleanup ? String(option.text || "").replace(cleanup, "").trim() : option.text || "";
 }
