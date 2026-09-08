@@ -84,7 +84,14 @@ function updateStats() {
   els.stage3.textContent = counts[3];
   els.goalText.textContent = `${pct}%`;
   els.progressBar.style.width = `${pct}%`;
-  els.datasetInfo.textContent = `${dataset.title || "Fragensatz"} - ${dataset.questions.length} Fragen`;
+  const removed = dataset.removedCount || 0;
+  const otherIssues = (dataset.validationIssues || []).filter((issue) => !issue.startsWith("leerer Eintrag"));
+  const validationText = removed
+    ? ` | Prüfung: ${removed} leerer Eintrag entfernt`
+    : otherIssues.length
+      ? ` | Prüfung: ${otherIssues.length} Hinweis${otherIssues.length === 1 ? "" : "e"}`
+      : " | Prüfung OK";
+  els.datasetInfo.textContent = `${dataset.title || "Fragensatz"} - ${dataset.questions.length} Fragen${validationText}`;
 }
 
 function filteredQuestions() {
@@ -288,6 +295,9 @@ const ORDERING_SOLUTIONS = {
   "5436": { B: 1, D: 2, C: 3, A: 4 },
   "5619": { E: 1, A: 2, D: 3, C: 4, B: 5 },
   "5083": { D: 1, A: 2 },
+  "5680": { A: 1, C: 2, B: 3 },
+  "5710": { E: 1, C: 2, B: 3, D: 4, A: 5 },
+  "5809": { A: 1, C: 2, B: 3 },
 };
 
 const ORDERING_TEXT_CLEANUPS = {
@@ -299,6 +309,9 @@ const ORDERING_TEXT_CLEANUPS = {
   "5436": { A: /\s4\s*$/, B: /\s1\s*$/, C: /\s3\s*$/, D: /\s2\s*$/ },
   "5619": { A: /\s2\s*$/, B: /\s5\s*$/, C: /\s4\s*$/, D: /\s3\s+Abstimmung/, E: /\s1\s*$/ },
   "5083": { A: /\s1\s*$/, B: /\s2\s*$/, C: /\s4\s*$/, D: /\s3\s*$/ },
+  "5680": { A: /\s1\s*$/, B: /\s3\s*$/, C: /\s2\s*$/ },
+  "5710": { A: /\s5\s*$/, D: /\s4\s*$/, E: /\s1\s*$/ },
+  "5809": { A: /\s1\s*$/, B: /\s3\s*$/, C: /\s2\s*$/ },
 };
 
 function cleanOrderingText(question, option) {
@@ -424,16 +437,39 @@ function nextQuestion() {
   question ? renderQuestion(question) : showEmpty();
 }
 
+function validateDataset(data) {
+  const questions = Array.isArray(data?.questions) ? data.questions : [];
+  const ids = new Set();
+  const issues = [];
+  for (const question of questions) {
+    const id = String(question?.id || "unbekannt");
+    if (ids.has(id)) issues.push(`doppelte ID ${id}`);
+    ids.add(id);
+    const hasText = String(question?.question || "").trim().length > 0;
+    const hasOptions = Array.isArray(question?.options) && question.options.length > 0;
+    if (!hasText && !hasOptions) issues.push(`leerer Eintrag ${id}`);
+    if (hasOptions && !question.options.some((option) => option?.correct)) {
+      issues.push(`${id} ohne richtige Antwort`);
+    }
+  }
+  return issues;
+}
+
 async function loadDataset(data, freshAssets = false) {
   if (freshAssets) assetVersion = Date.now();
+  const validationIssues = validateDataset(data);
+  const rawQuestions = Array.isArray(data.questions) ? data.questions : [];
+  const validQuestions = rawQuestions.filter((question) => {
+    const hasText = String(question?.question || "").trim().length > 0;
+    const hasOptions = Array.isArray(question?.options) && question.options.length > 0;
+    return hasText || hasOptions;
+  });
   dataset = {
     ...data,
     // Ignore empty PDF tail records such as the generated "seite-688" entry.
-    questions: (data.questions || []).filter((question) => {
-      const hasText = String(question?.question || "").trim().length > 0;
-      const hasOptions = Array.isArray(question?.options) && question.options.length > 0;
-      return hasText || hasOptions;
-    }),
+    questions: validQuestions,
+    removedCount: rawQuestions.length - validQuestions.length,
+    validationIssues,
   };
   loadProgress();
   updateStats();
