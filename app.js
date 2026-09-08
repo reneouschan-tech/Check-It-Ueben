@@ -152,7 +152,7 @@ function renderQuestion(question) {
     letter.textContent = option.label;
     const content = document.createElement("span");
     content.className = "option-content";
-    content.textContent = option.text || "";
+    content.textContent = ordering ? cleanOrderingText(question, option) : option.text || "";
     button.append(letter, content);
     button.addEventListener("click", () => {
       if (answered) return;
@@ -290,6 +290,22 @@ const ORDERING_SOLUTIONS = {
   "5083": { A: 1, B: 2, D: 3, C: 4 },
 };
 
+const ORDERING_TEXT_CLEANUPS = {
+  "4880": { A: /\s2\s*$/, B: /\s3\s*$/, C: /\s1\s*$/, D: /\s4\s*$/, E: /\s5\s*$/ },
+  "5416": { B: /\s4\s*$/, C: /\s3\s+dem/, D: /\s1\s*$/, E: /\s6\s*$/, F: /\s5\s+Seite/ },
+  "5232": { A: /\s4\s*$/, B: /\s5\s*$/, C: /\s3\s+\(/ },
+  "175": { A: /\s3\s*$/, C: /\s4\s*$/, D: /\s1\s*$/ },
+  "5414": { A: /\s1\s*$/, B: /\s2\s*$/, C: /\s3\s+fahrzeug/ },
+  "5436": { A: /\s4\s*$/, B: /\s1\s*$/, C: /\s3\s*$/, D: /\s2\s*$/ },
+  "5619": { A: /\s2\s*$/, B: /\s5\s*$/, C: /\s4\s*$/, D: /\s3\s+Abstimmung/, E: /\s1\s*$/ },
+  "5083": { A: /\s1\s*$/, B: /\s2\s*$/, C: /\s4\s*$/, D: /\s3\s*$/ },
+};
+
+function cleanOrderingText(question, option) {
+  const cleanup = ORDERING_TEXT_CLEANUPS[String(question.id)]?.[option.label];
+  return cleanup ? String(option.text || "").replace(cleanup, "").trim() : option.text || "";
+}
+
 function getOrderingLabels(question) {
   return question.options
     .filter((option) => String(question.id) === "5083" || option.correct)
@@ -343,10 +359,11 @@ function submitAnswer() {
   const correctLabels = isOrderingQuestion(current)
     ? getOrderingLabels(current).join(" -> ")
     : current.options.filter((option) => option.correct).map((option) => option.label).join(", ");
+  const ordering = isOrderingQuestion(current);
   for (const button of els.options.querySelectorAll(".option")) {
     const option = current.options.find((item) => item.label === button.dataset.label);
-    button.classList.toggle("correct", option.correct);
-    button.classList.toggle("wrong", selected.has(option.label) && !option.correct);
+    button.classList.toggle("correct", ordering ? correct : option.correct);
+    button.classList.toggle("wrong", ordering ? !correct && selected.has(option.label) : selected.has(option.label) && !option.correct);
   }
 
   els.feedback.hidden = false;
