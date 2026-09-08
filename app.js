@@ -287,7 +287,7 @@ const ORDERING_SOLUTIONS = {
   "5414": { A: 1, B: 2, C: 3 },
   "5436": { B: 1, D: 2, C: 3, A: 4 },
   "5619": { E: 1, A: 2, D: 3, C: 4, B: 5 },
-  "5083": { A: 1, B: 2, D: 3, C: 4 },
+  "5083": { A: 1, B: 2 },
 };
 
 const ORDERING_TEXT_CLEANUPS = {
@@ -308,7 +308,7 @@ function cleanOrderingText(question, option) {
 
 function getOrderingLabels(question) {
   return question.options
-    .filter((option) => String(question.id) === "5083" || option.correct)
+    .filter((option) => option.correct)
     .map((option, index) => {
       const knownOrder = ORDERING_SOLUTIONS[String(question.id)]?.[option.label];
       const match = String(option.text || "").match(/(?:^|\s)(\d+)\s*$/);
@@ -360,9 +360,10 @@ function submitAnswer() {
     ? getOrderingLabels(current).join(" -> ")
     : current.options.filter((option) => option.correct).map((option) => option.label).join(", ");
   const ordering = isOrderingQuestion(current);
+  const correctOrdering = ordering ? new Set(getOrderingLabels(current)) : null;
   for (const button of els.options.querySelectorAll(".option")) {
     const option = current.options.find((item) => item.label === button.dataset.label);
-    button.classList.toggle("correct", ordering ? correct : option.correct);
+    button.classList.toggle("correct", ordering ? correctOrdering.has(option.label) : option.correct);
     button.classList.toggle("wrong", ordering ? !correct && selected.has(option.label) : selected.has(option.label) && !option.correct);
   }
 
