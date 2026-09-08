@@ -312,12 +312,19 @@ function cleanOrderingText(question, option) {
 }
 
 function getOrderingLabels(question) {
+  const configuredOrder = ORDERING_SOLUTIONS[String(question.id)];
+  if (configuredOrder) {
+    const availableLabels = new Set(question.options.map((option) => option.label));
+    return Object.entries(configuredOrder)
+      .filter(([label]) => availableLabels.has(label))
+      .sort(([, a], [, b]) => a - b)
+      .map(([label]) => label);
+  }
   return question.options
     .filter((option) => option.correct)
     .map((option, index) => {
-      const knownOrder = ORDERING_SOLUTIONS[String(question.id)]?.[option.label];
       const match = String(option.text || "").match(/(?:^|\s)(\d+)\s*$/);
-      return { label: option.label, order: knownOrder ?? (match ? Number(match[1]) : index + 1) };
+      return { label: option.label, order: match ? Number(match[1]) : index + 1 };
     })
     .sort((a, b) => a.order - b.order)
     .map((option) => option.label);
