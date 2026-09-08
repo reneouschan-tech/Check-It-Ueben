@@ -426,7 +426,15 @@ function nextQuestion() {
 
 async function loadDataset(data, freshAssets = false) {
   if (freshAssets) assetVersion = Date.now();
-  dataset = data;
+  dataset = {
+    ...data,
+    // Ignore empty PDF tail records such as the generated "seite-688" entry.
+    questions: (data.questions || []).filter((question) => {
+      const hasText = String(question?.question || "").trim().length > 0;
+      const hasOptions = Array.isArray(question?.options) && question.options.length > 0;
+      return hasText || hasOptions;
+    }),
+  };
   loadProgress();
   updateStats();
   nextQuestion();
