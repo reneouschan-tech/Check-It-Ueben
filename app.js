@@ -299,7 +299,7 @@ async function setCroppedQuestionImage(imgEl, src) {
         const ctx = canvas.getContext("2d");
         if (!ctx) return src;
         ctx.drawImage(image, cropX, 0, canvas.width, height, 0, 0, canvas.width, height);
-        return canvas.toDataURL("image/jpeg", 0.98);
+        return canvas.toDataURL("image/png");
       })().catch(() => src));
     }
     const cropped = await questionImageCache.get(src);
