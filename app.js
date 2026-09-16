@@ -289,7 +289,8 @@ async function setCroppedQuestionImage(imgEl, src) {
 
         // Imported PDF pages place the repeated text on the left and the
         // actual diagram on the right. Keep the original pixels.
-        const cropX = Math.floor(width * 0.52);
+        // Start a little earlier so the left edge of diagrams is never cut off.
+        const cropX = Math.floor(width * 0.46);
         const canvas = document.createElement("canvas");
         canvas.width = width - cropX;
         canvas.height = height;
