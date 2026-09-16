@@ -303,8 +303,11 @@ button:disabled {
 .question-image img,
 .solution img {
   display: block;
-  width: 100%;
+  width: min(100%, 820px);
   height: auto;
+  margin: 0 auto;
+  object-fit: contain;
+  object-position: center;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: white;
