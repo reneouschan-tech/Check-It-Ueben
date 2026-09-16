@@ -144,6 +144,7 @@ function renderQuestion(question) {
   els.title.textContent = question.question || "Frage aus der PDF";
   els.badge.textContent = `Stufe ${state.stage}`;
   const questionImageSrc = withVersion(question.questionImage);
+  els.questionImage.parentElement.hidden = true;
   els.questionImage.src = questionImageSrc;
   setCroppedQuestionImage(els.questionImage, questionImageSrc);
   els.solutionImage.src = withVersion(question.solutionImage);
@@ -291,6 +292,7 @@ async function setCroppedQuestionImage(imgEl, src) {
         // actual diagram on the right. Keep the original pixels.
         // Start a little earlier so the left edge of diagrams is never cut off.
         const cropX = Math.floor(width * 0.46);
+        if (!hasGraphicContent(image, cropX)) return null;
         const canvas = document.createElement("canvas");
         canvas.width = width - cropX;
         canvas.height = height;
@@ -301,10 +303,53 @@ async function setCroppedQuestionImage(imgEl, src) {
       })().catch(() => src));
     }
     const cropped = await questionImageCache.get(src);
-    if (imgEl.isConnected && cropped) imgEl.src = cropped;
+    if (imgEl.isConnected && cropped) {
+      imgEl.src = cropped;
+      imgEl.parentElement.hidden = false;
+    }
   } catch {
-    // Keep the original image if cropping fails.
+    // Hide empty or unreadable PDF image areas.
   }
+}
+
+function hasGraphicContent(image, cropX) {
+  const canvas = document.createElement("canvas");
+  const width = image.naturalWidth || image.width;
+  const height = image.naturalHeight || image.height;
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return false;
+  ctx.drawImage(image, 0, 0);
+  const startY = Math.floor(height * 0.22);
+  const endY = Math.floor(height * 0.92);
+  const startX = Math.max(0, cropX);
+  const regionWidth = width - startX;
+  const regionHeight = endY - startY;
+  if (regionWidth < 2 || regionHeight < 2) return false;
+  const { data } = ctx.getImageData(startX, startY, regionWidth, regionHeight);
+  let ink = 0;
+  let minX = regionWidth;
+  let maxX = -1;
+  let minY = regionHeight;
+  let maxY = -1;
+  for (let y = 0; y < regionHeight; y += 1) {
+    for (let x = 0; x < regionWidth; x += 1) {
+      const i = (y * regionWidth + x) * 4;
+      if (data[i] >= 235 && data[i + 1] >= 235 && data[i + 2] >= 235) continue;
+      ink += 1;
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+    }
+  }
+  const area = regionWidth * regionHeight;
+  const contentWidth = maxX - minX + 1;
+  const contentHeight = maxY - minY + 1;
+  return ink >= Math.max(120, area * 0.01)
+    && contentWidth >= regionWidth * 0.18
+    && contentHeight >= regionHeight * 0.08;
 }
 
 function renderSelection() {
