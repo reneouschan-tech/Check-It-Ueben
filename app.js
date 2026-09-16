@@ -40,6 +40,7 @@ let selectedOrder = [];
 let answered = false;
 let assetVersion = Date.now();
 const answerImageCache = new Map();
+const questionImageCache = new Map();
 const INITIAL_DATASET_URL = `data/questions.json?ts=${Date.now()}`;
 
 window.addEventListener("error", (event) => {
@@ -142,7 +143,9 @@ function renderQuestion(question) {
   els.meta.textContent = `FrageID ${question.id} - Seite ${question.page} - ${question.type}`;
   els.title.textContent = question.question || "Frage aus der PDF";
   els.badge.textContent = `Stufe ${state.stage}`;
-  els.questionImage.src = withVersion(question.questionImage);
+  const questionImageSrc = withVersion(question.questionImage);
+  els.questionImage.src = questionImageSrc;
+  setCroppedQuestionImage(els.questionImage, questionImageSrc);
   els.solutionImage.src = withVersion(question.solutionImage);
   els.submit.hidden = !hasOptions;
   els.submit.disabled = true;
@@ -269,6 +272,35 @@ async function setCroppedAnswerImage(imgEl, src) {
     if (imgEl.isConnected && cropped) {
       imgEl.src = cropped;
     }
+  } catch {
+    // Keep the original image if cropping fails.
+  }
+}
+
+async function setCroppedQuestionImage(imgEl, src) {
+  if (!src) return;
+  try {
+    if (!questionImageCache.has(src)) {
+      questionImageCache.set(src, (async () => {
+        const image = await loadImage(src);
+        const width = image.naturalWidth || image.width;
+        const height = image.naturalHeight || image.height;
+        if (!width || !height || width < 2) return src;
+
+        // Imported PDF pages place the repeated text on the left and the
+        // actual diagram on the right. Keep the original pixels.
+        const cropX = Math.floor(width * 0.52);
+        const canvas = document.createElement("canvas");
+        canvas.width = width - cropX;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return src;
+        ctx.drawImage(image, cropX, 0, canvas.width, height, 0, 0, canvas.width, height);
+        return canvas.toDataURL("image/jpeg", 0.98);
+      })().catch(() => src));
+    }
+    const cropped = await questionImageCache.get(src);
+    if (imgEl.isConnected && cropped) imgEl.src = cropped;
   } catch {
     // Keep the original image if cropping fails.
   }
