@@ -38,10 +38,12 @@ let current = null;
 let selected = new Set();
 let selectedOrder = [];
 let answered = false;
-let assetVersion = Date.now();
+// Keep asset URLs stable so repeat visitors can use the browser cache.
+// Increase this version when image assets change.
+let assetVersion = "20260917-1";
 const answerImageCache = new Map();
 const questionImageCache = new Map();
-const INITIAL_DATASET_URL = `data/questions.json?ts=${Date.now()}`;
+const INITIAL_DATASET_URL = "data/questions.json?v=20260917-1";
 
 window.addEventListener("error", (event) => {
   els.title.textContent = "Startfehler";
@@ -621,23 +623,7 @@ els.reset.addEventListener("click", () => {
   nextQuestion();
 });
 async function clearServiceWorkerState() {
-  if ("serviceWorker" in navigator) {
-    try {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(registrations.map((registration) => registration.unregister()));
-    } catch {
-      // Best effort only.
-    }
-  }
-
-  if ("caches" in window) {
-    try {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((key) => caches.delete(key)));
-    } catch {
-      // Best effort only.
-    }
-  }
+  return Promise.resolve();
 }
 
 async function boot() {
@@ -645,7 +631,8 @@ async function boot() {
   await clearServiceWorkerState();
 
   try {
-    const response = await fetch(INITIAL_DATASET_URL, { cache: "no-store" });
+    const response = await fetch(INITIAL_DATASET_URL, { cache: "default" });
+    if (!response.ok) throw new Error(`Fragensatz konnte nicht geladen werden (${response.status})`);
     const dataset = await response.json();
     await loadDataset(dataset);
   } catch (error) {
